@@ -1,0 +1,142 @@
+meta:
+  system_name: "personal_signal_alerts"
+  strategy_version: "v0.1.0"
+  timezone: "America/Los_Angeles"
+  universe: "US_EQUITY"
+  base_benchmark: "SPY"
+  long_only: true
+
+runtime:
+  alert_runs:
+    - name: "daily_close"
+      bar_interval: "1d"
+      run_time_local: "16:10"
+    - name: "hourly"
+      bar_interval: "60m"
+      run_time_local: "every_60_minutes"
+
+data:
+  corporate_action_adjustment: "split_div_adjusted"
+  min_history_days: 260
+  bars:
+    - interval: "1d"
+      lookback_days: 520
+    - interval: "60m"
+      lookback_days: 90
+
+universe_filter:
+  min_price: 5.0
+  min_avg_dollar_volume_20d: 20000000
+  exclude_symbols: ["SPY", "QQQ"]
+  earnings_calendar:
+    enabled: false
+    block_days_before: 2
+    block_days_after: 1
+
+regime:
+  benchmark: "SPY"
+  vol_proxy: "VIX"
+  rules:
+    TREND:
+      conditions:
+        - "benchmark_close_above_ma200 == true"
+        - "benchmark_ma50_above_ma200 == true"
+      optional:
+        - "benchmark_adx14 >= 20"
+      vol_guard:
+        max_vix: 28
+    RANGE:
+      conditions:
+        - "benchmark_adx14 <= 18"
+      vol_guard:
+        max_vix: 30
+    RISK_OFF:
+      conditions:
+        - "benchmark_close_below_ma200 == true"
+      vol_guard:
+        min_vix: 28
+    HIGH_VOL:
+      conditions:
+        - "vix >= 30"
+
+scoring:
+  pools:
+    CORE:
+      min_total: 80
+      max_event_risk_penalty: -5
+      max_risk_pct_of_equity: 0.30
+      max_alerts_per_run: 5
+    RISKY:
+      min_total: 70
+      max_event_risk_penalty: -15
+      max_risk_pct_of_equity: 0.10
+      max_alerts_per_run: 3
+  weights_global:
+    regime_fit: 0.18
+    trend_momo: 0.25
+    mean_reversion: 0.15
+    volume_flow: 0.18
+    risk_reward: 0.18
+    liquidity: 0.06
+    event_risk_penalty: 1.00
+
+strategies:
+  TREND_BREAKOUT:
+    enabled: true
+    pool_default: "CORE"
+    allowed_regimes: ["TREND"]
+    params:
+      breakout_lookback_days: 20
+      volume_multiple_min: 1.5
+      require_close_confirm: true
+      atr_period: 14
+      stop_atr_multiple: 1.5
+      min_rr: 2.0
+      time_stop_days: 10
+      targets:
+        - {name: "T1", rr: 2.0, size_pct: 0.5}
+        - {name: "T2", rr: 4.0, size_pct: 0.5, trail: "2*ATR"}
+
+  RS_ROTATION:
+    enabled: true
+    pool_default: "CORE"
+    allowed_regimes: ["TREND"]
+    params:
+      rs_lookback_days: 60
+      rs_percentile_min: 0.90
+      require_price_above_ma50: true
+      require_ma50_above_ma200: true
+      max_drawdown_20d: 0.12
+      atr_period: 14
+      stop_atr_multiple: 2.0
+      min_rr: 2.0
+      rebalance_days: 7
+
+  RANGE_MR:
+    enabled: true
+    pool_default: "CORE"
+    allowed_regimes: ["RANGE"]
+    params:
+      bb_period: 20
+      z_entry_max: -2.0
+      z_exit_min: -0.2
+      rsi_period: 14
+      rsi_confirm_max: 32
+      atr_period: 14
+      stop_atr_multiple: 1.2
+      min_rr: 2.0
+      time_stop_days: 5
+
+  EARNINGS_GAP:
+    enabled: true
+    pool_default: "RISKY"
+    allowed_regimes: ["TREND", "RANGE"]
+    params:
+      gap_pct_min: 0.06
+      volume_multiple_min: 2.0
+      close_near_high_pct: 0.75
+      entry_mode: "BREAK_HIGH_NEXT_DAY"
+      atr_period: 14
+      stop_rule: "BREAK_VWAP"
+      time_stop_days: 3
+      min_rr: 1.5
