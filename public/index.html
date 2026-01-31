@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Stock Signals (Public)</title>
+  <style>
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, "Noto Sans TC", Arial; margin: 24px; }
+    .muted { color: #666; }
+    .card { border: 1px solid #ddd; border-radius: 12px; padding: 14px 16px; margin: 12px 0; }
+    .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: baseline; }
+    .pill { padding: 2px 8px; border-radius: 999px; border: 1px solid #ddd; font-size: 12px; }
+    .score { font-weight: 700; }
+    pre { white-space: pre-wrap; word-break: break-word; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { border-bottom: 1px solid #eee; padding: 8px; text-align: left; vertical-align: top; }
+  </style>
+</head>
+<body>
+  <h2>Stock Signals (Public)</h2>
+  <p class="muted" id="meta">Loading...</p>
+
+  <div id="content"></div>
+
+  <hr />
+  <p class="muted">
+    Disclaimer: Informational only; not investment advice.
+  </p>
+
+<script>
+async function main() {
+  const metaEl = document.getElementById("meta");
+  const content = document.getElementById("content");
+
+  try {
+    const res = await fetch("./latest.json", { cache: "no-store" });
+    if (!res.ok) throw new Error("latest.json not found yet");
+    const data = await res.json();
+
+    const generated = data.generated_at_utc || "(unknown)";
+    const count = (data.alerts || []).length;
+    metaEl.textContent = `Last updated (UTC): ${generated} | Alerts: ${count}`;
+
+    if (!count) {
+      content.innerHTML = `<div class="card">目前沒有任何提示（可能是門檻較嚴或資料不足）。</div>`;
+      return;
+    }
+
+    const rows = data.alerts.map(a => {
+      const sym = a.symbol;
+      const setup = a.setup?.setup_name || "";
+      const pool = a.setup?.pool || "";
+      const action = a.setup?.action || "";
+      const score = a.scores?.total ?? "";
+      const evidence = (a.evidence || []).slice(0, 3).map(x => `• ${x}`).join("<br/>");
+
+      // trade plan summary (best-effort)
+      const tp = a.trade_plan || {};
+      const entry = tp.entry?.trigger_price ?? (tp.entry?.entry_zone ? tp.entry.entry_zone.join(" - ") : "");
+      const inval = tp.invalidation?.price ?? "";
+      const atrm = tp.stop?.atr_multiple ?? "";
+
+      return `
+        <div class="card">
+          <div class="row">
+            <div style="font-size:18px;font-weight:700;">${sym}</div>
+            <span class="pill">${pool}</span>
+            <span class="pill">${setup}</span>
+            <span class="pill">${action}</span>
+            <span class="pill score">Score: ${score}</span>
+          </div>
+          <div style="margin-top:10px;">
+            <div><b>Evidence</b><br/>${evidence || "(none)"}</div>
+            <div style="margin-top:8px;">
+              <b>Plan</b><br/>
+              Entry: ${entry || "(n/a)"} |
+              Invalidation: ${inval || "(n/a)"} |
+              Stop ATR: ${atrm || "(n/a)"}
+            </div>
+          </div>
+        </div>
+      `;
+    }).join("");
+
+    content.innerHTML = rows;
+  } catch (e) {
+    metaEl.textContent = "尚未生成 latest.json（或第一次部署還沒完成）。";
+    content.innerHTML = `<div class="card"><pre>${String(e)}</pre></div>`;
+  }
+}
+main();
+</script>
+</body>
+</html>
