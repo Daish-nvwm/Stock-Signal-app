@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   push:
     branches: ["main"]
-    
+
   schedule:
     # 07:00 PT：PDT=14:00 UTC / PST=15:00 UTC
     - cron: "5 14 * * 1-5"
@@ -13,7 +13,6 @@ on:
     # 12:00 PT：PDT=19:00 UTC / PST=20:00 UTC
     - cron: "5 19 * * 1-5"
     - cron: "5 20 * * 1-5"
-
 
 permissions:
   contents: read
@@ -27,34 +26,69 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+
+    # 讓 deploy job 可以知道這次到底要不要跑
+    outputs:
+      run: ${{ steps.gate.outputs.run }}
+
     steps:
+      - name: Time gate (PT 07:00/12:00)
+        id: gate
+        shell: bash
+        run: |
+          # push / 手動觸發：永遠跑（方便你測試與手動更新）
+          if [ "${{ github.event_name }}" != "schedule" ]; then
+            echo "run=yes" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # schedule 觸發：只有在加州時間 07:xx 或 12:xx 才真的跑
+          PT_HOUR=$(TZ=America/Los_Angeles date +%H)
+          PT_MIN=$(TZ=America/Los_Angeles date +%M)
+          PT_WD=$(TZ=America/Los_Angeles date +%u)  # 1=Mon ... 7=Sun
+
+          # 週一到週五、且允許排隊延遲（分鐘 <= 55）
+          if [ "$PT_WD" -ge 1 ] && [ "$PT_WD" -le 5 ] && [ "$PT_MIN" -le 55 ] && { [ "$PT_HOUR" -eq 7 ] || [ "$PT_HOUR" -eq 12 ]; }; then
+            echo "run=yes" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=no" >> "$GITHUB_OUTPUT"
+            echo "Skip: now PT ${PT_HOUR}:${PT_MIN} weekday=${PT_WD}"
+          fi
+
       - name: Checkout
+        if: steps.gate.outputs.run == 'yes'
         uses: actions/checkout@v4
 
       - name: Setup Python
+        if: steps.gate.outputs.run == 'yes'
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
       - name: Install deps
+        if: steps.gate.outputs.run == 'yes'
         run: |
           pip install -r requirements.txt
 
       - name: Run demo to generate alerts
+        if: steps.gate.outputs.run == 'yes'
         run: |
           python -m src.main --demo
 
       - name: Export latest.json for web
+        if: steps.gate.outputs.run == 'yes'
         run: |
           python -m src.publish.export_latest --input data/processed/alerts_demo.jsonl --output public/latest.json --max 20
 
       - name: Upload Pages artifact
+        if: steps.gate.outputs.run == 'yes'
         uses: actions/upload-pages-artifact@v3
         with:
           path: public
 
   deploy:
     needs: build
+    if: needs.build.outputs.run == 'yes'
     runs-on: ubuntu-latest
     environment:
       name: github-pages
