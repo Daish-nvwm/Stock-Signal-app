@@ -2,10 +2,18 @@ name: Publish Signals to GitHub Pages
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: "20 0 * * *"   # 每天 UTC 00:20 跑一次（你可改）
   push:
     branches: ["main"]
+    
+  schedule:
+    # 07:00 PT：PDT=14:00 UTC / PST=15:00 UTC
+    - cron: "5 14 * * 1-5"
+    - cron: "5 15 * * 1-5"
+
+    # 12:00 PT：PDT=19:00 UTC / PST=20:00 UTC
+    - cron: "5 19 * * 1-5"
+    - cron: "5 20 * * 1-5"
+
 
 permissions:
   contents: read
