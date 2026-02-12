@@ -1,0 +1,22 @@
+# One symbol per line. Lines starting with # are ignored.
+# Keep this list small at first to avoid Finnhub free-tier rate limits.
+
+AAPL
+MSFT
+NVDA
+TSLA
+AMZN
+META
+GOOGL
+ORCL
+CRM
+NOW
+AMD
+INTC
+AVGO
+MU
+NFLX
+TSM
+SMCI
+PLTR
+SHOP
