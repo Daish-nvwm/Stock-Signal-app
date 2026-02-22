@@ -64,6 +64,25 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
+      # ✅ Preflight: 1秒看出是 401/403/429 或網路問題（不會印出 key）
+      - name: Finnhub preflight (no key printed)
+        if: steps.gate.outputs.run == 'yes'
+        env:
+          FINNHUB_API_KEY: ${{ secrets.FINNHUB_API_KEY }}
+        run: |
+          python - <<'PY'
+          import os, requests
+          key = (os.getenv("FINNHUB_API_KEY") or "").strip()
+          print("key_set =", bool(key), "len =", len(key))
+          r = requests.get(
+              "https://finnhub.io/api/v1/quote",
+              params={"symbol": "AAPL", "token": key},
+              timeout=20
+          )
+          print("quote_status =", r.status_code)
+          print("quote_body =", r.text[:200])
+          PY
+
       - name: Run Finnhub scan to generate alerts
         if: steps.gate.outputs.run == 'yes'
         env:
