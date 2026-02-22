@@ -27,8 +27,12 @@ def main():
     out_path = Path(args.output)
     alerts = read_jsonl(in_path)
 
+<<<<<<< HEAD
     alerts = sorted(alerts, key=lambda a: a.get("scores", {}).get("total", 0), reverse=True)
     alerts = alerts[: args.max]
+=======
+    alerts = sorted(alerts, key=lambda a: a.get("scores", {}).get("total", 0), reverse=True)[: args.max]
+>>>>>>> 8faa76d (Finnhub run + publish report)
 
     payload = {
         "generated_at_utc": datetime.now(timezone.utc).isoformat(),

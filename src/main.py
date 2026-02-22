@@ -241,6 +241,7 @@ def main():
     args = parser.parse_args()
 
     project_root = Path(__file__).resolve().parents[1]
+
     if args.demo:
         run_demo(project_root)
     elif args.finnhub:
