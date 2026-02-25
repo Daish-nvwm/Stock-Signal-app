@@ -8,7 +8,8 @@ from datetime import datetime, timezone
 
 from .common.config_loader import load_config, load_score_maps
 from .data.loader import generate_synthetic_bars, load_local_parquet
-from .data.finnhub_client import fetch_stock_candles, fetch_quote
+from .data.yahoo_client import fetch_stock_candles_yahoo
+from .data.finnhub_client import fetch_quote
 from .features.feature_set import compute_daily_features
 from .regime.classifier import classify_regime
 from .universe.filter import passes_universe_filters
@@ -127,7 +128,7 @@ def run_finnhub(
     }
 
     # Benchmark (SPY)
-    bench_df = fetch_stock_candles(BENCH, interval=interval, lookback_days=lookback_days, api_key=api_key)
+    bench_df = fetch_stock_candles_yahoo(BENCH, interval=interval, lookback_days=lookback_days, api_key=api_key)
     time.sleep(sleep_s)
     if bench_df.empty:
         raise RuntimeError("Finnhub returned no benchmark data for SPY. Check API key / plan / symbol.")
@@ -150,7 +151,7 @@ def run_finnhub(
     for sym in symbols:
         report["universe"]["loaded"] += 1
         try:
-            df = fetch_stock_candles(sym, interval=interval, lookback_days=lookback_days, api_key=api_key)
+            df = fetch_stock_candles_yahoo(sym, interval=interval, lookback_days=lookback_days, api_key=api_key)
             time.sleep(sleep_s)
 
             if df.empty:
