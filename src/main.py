@@ -18,7 +18,7 @@ from .alerts.builder import build_alert
 from .alerts.storage import save_alerts_jsonl
 
 DEFAULT_SYMBOLS = ["AAPL", "MSFT", "NVDA", "TSLA", "AMZN", "META"]
-BENCH = "SPY"
+BENCH = "AAPL"
 
 
 def _read_watchlist(path: Path) -> list[str]:
